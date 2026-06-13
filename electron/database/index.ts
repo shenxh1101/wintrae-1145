@@ -1,0 +1,146 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+import { app } from 'electron';
+import fs from 'fs';
+import { migrations } from './migrations';
+
+let db: Database.Database | null = null;
+
+export function getDbPath(): string {
+  const userDataPath = app.getPath('userData');
+  const dbDir = path.join(userDataPath, 'library-data');
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  return path.join(dbDir, 'library.db');
+}
+
+export function getCoversPath(): string {
+  const userDataPath = app.getPath('userData');
+  const coversPath = path.join(userDataPath, 'library-data', 'covers');
+  if (!fs.existsSync(coversPath)) {
+    fs.mkdirSync(coversPath, { recursive: true });
+  }
+  return coversPath;
+}
+
+export function initDatabase(): Database.Database {
+  if (db) return db;
+
+  const dbPath = getDbPath();
+  db = new Database(dbPath);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+  for (const migration of migrations) {
+    db.exec(migration);
+  }
+
+  return db;
+}
+
+export function getDatabase(): Database.Database {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  return db;
+}
+
+export function closeDatabase(): void {
+  if (db) {
+    db.close();
+    db = null;
+  }
+}
+
+export function rowToBook(row: any, tags: string[] = []): any {
+  return {
+    id: row.id,
+    isbn: row.isbn,
+    title: row.title,
+    author: row.author,
+    publisher: row.publisher,
+    publishDate: row.publish_date,
+    purchasePrice: row.purchase_price,
+    purchaseDate: row.purchase_date,
+    status: row.status,
+    rating: row.rating,
+    notes: row.notes,
+    coverImage: row.cover_image,
+    tags,
+    shelfLocationId: row.shelf_location_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function rowToTag(row: any): any {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    createdAt: row.created_at,
+  };
+}
+
+export function rowToLocation(row: any): any {
+  return {
+    id: row.id,
+    parentId: row.parent_id,
+    type: row.type,
+    name: row.name,
+    code: row.code,
+    description: row.description,
+    positionOrder: row.position_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function rowToBorrowRecord(row: any, book?: any): any {
+  return {
+    id: row.id,
+    bookId: row.book_id,
+    book,
+    borrowerName: row.borrower_name,
+    borrowerContact: row.borrower_contact,
+    borrowDate: row.borrow_date,
+    expectedReturnDate: row.expected_return_date,
+    actualReturnDate: row.actual_return_date,
+    enableReminder: !!row.enable_reminder,
+    reminderSent: !!row.reminder_sent,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function rowToWishItem(row: any): any {
+  return {
+    id: row.id,
+    title: row.title,
+    author: row.author,
+    publisher: row.publisher,
+    isbn: row.isbn,
+    estimatedPrice: row.estimated_price,
+    priority: row.priority,
+    notes: row.notes,
+    coverImage: row.cover_image,
+    purchased: !!row.purchased,
+    actualPrice: row.actual_price,
+    purchaseDate: row.purchase_date,
+    bookId: row.book_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function rowToBudget(row: any): any {
+  return {
+    id: row.id,
+    monthlyBudget: row.monthly_budget,
+    yearlyBudget: row.yearly_budget,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
