@@ -1,4 +1,5 @@
 import { ipcMain, dialog } from 'electron';
+import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, rowToBook, rowToBorrowRecord, rowToLocation, rowToWishItem } from '../database';
 import fs from 'fs';
 import path from 'path';
@@ -139,7 +140,12 @@ export function registerStatsIPC(): void {
       const db = getDatabase();
       const result: any = {};
 
-      if (req.includeTypes.includes('books')) {
+      const includeBooks = req.includeBooks ?? req.includeTypes?.includes('books');
+      const includeBorrow = req.includeBorrow ?? req.includeTypes?.includes('borrow');
+      const includeShelf = req.includeShelf ?? req.includeTypes?.includes('shelf');
+      const includeWishlist = req.includeWishlist ?? req.includeTypes?.includes('wishlist');
+
+      if (includeBooks) {
         const bookRows = db.prepare(`
           SELECT b.*, GROUP_CONCAT(t.name) as tag_names
           FROM books b
@@ -153,17 +159,17 @@ export function registerStatsIPC(): void {
         });
       }
 
-      if (req.includeTypes.includes('borrow')) {
+      if (includeBorrow) {
         const borrowRows = db.prepare('SELECT * FROM borrow_records').all() as any[];
         result.borrowRecords = borrowRows.map(rowToBorrowRecord);
       }
 
-      if (req.includeTypes.includes('shelf')) {
+      if (includeShelf) {
         const shelfRows = db.prepare('SELECT * FROM shelf_locations').all() as any[];
         result.shelfLocations = shelfRows.map(rowToLocation);
       }
 
-      if (req.includeTypes.includes('wishlist')) {
+      if (includeWishlist) {
         const wishRows = db.prepare('SELECT * FROM wishlist_items').all() as any[];
         result.wishlistItems = wishRows.map(rowToWishItem);
       }
@@ -306,7 +312,7 @@ export function registerStatsIPC(): void {
                 for (const tagName of book.tags) {
                   let tagRow = db.prepare('SELECT * FROM tags WHERE name = ?').get(tagName) as any;
                   if (!tagRow) {
-                    const tagId = crypto.randomUUID();
+                    const tagId = uuidv4();
                     db.prepare('INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)').run(
                       tagId, tagName, '#8B6914', now
                     );
@@ -315,6 +321,87 @@ export function registerStatsIPC(): void {
                   db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)').run(book.id, tagRow.id);
                 }
               }
+              importedCount++;
+            }
+          }
+
+          if (parsedData.borrowRecords && Array.isArray(parsedData.borrowRecords)) {
+            for (const record of parsedData.borrowRecords) {
+              const now = new Date().toISOString();
+              db.prepare(`
+                INSERT OR REPLACE INTO borrow_records (
+                  id, book_id, borrower_name, borrower_contact, borrow_date,
+                  expected_return_date, actual_return_date, enable_reminder,
+                  reminder_sent, notes, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                record.id,
+                record.bookId,
+                record.borrower || record.borrowerName,
+                record.borrowerContact || null,
+                record.borrowDate,
+                record.expectedReturnDate,
+                record.actualReturnDate || null,
+                record.enableReminder ? 1 : 0,
+                record.reminderSent ? 1 : 0,
+                record.notes || null,
+                record.createdAt || now,
+                now
+              );
+              importedCount++;
+            }
+          }
+
+          if (parsedData.wishlistItems && Array.isArray(parsedData.wishlistItems)) {
+            for (const item of parsedData.wishlistItems) {
+              const now = new Date().toISOString();
+              db.prepare(`
+                INSERT OR REPLACE INTO wishlist_items (
+                  id, title, author, publisher, isbn, estimated_price,
+                  source_url, priority, notes, cover_image, purchased,
+                  actual_price, purchase_date, book_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                item.id,
+                item.title,
+                item.author || null,
+                item.publisher || null,
+                item.isbn || null,
+                item.expectedPrice || item.estimatedPrice || null,
+                item.sourceUrl || null,
+                item.priority,
+                item.notes || null,
+                item.coverImage || null,
+                item.purchased ? 1 : 0,
+                item.actualPrice || null,
+                item.purchaseDate || null,
+                item.bookId || null,
+                item.createdAt || now,
+                now
+              );
+              importedCount++;
+            }
+          }
+
+          if (parsedData.shelfLocations && Array.isArray(parsedData.shelfLocations)) {
+            for (const location of parsedData.shelfLocations) {
+              const now = new Date().toISOString();
+              db.prepare(`
+                INSERT OR REPLACE INTO shelf_locations (
+                  id, parent_id, type, name, code, description,
+                  position_order, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                location.id,
+                location.parentId || null,
+                location.type,
+                location.name,
+                location.code || null,
+                location.description || null,
+                location.positionOrder || 0,
+                location.createdAt || now,
+                now
+              );
               importedCount++;
             }
           }

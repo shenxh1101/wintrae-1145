@@ -64,7 +64,7 @@ export function registerBorrowIPC(): void {
       stmt.run(
         id,
         req.bookId,
-        req.borrowerName,
+        req.borrower,
         req.borrowerContact || null,
         req.borrowDate,
         req.expectedReturnDate,

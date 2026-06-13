@@ -406,9 +406,9 @@ const Stats: React.FC = () => {
             <div className="space-y-2">
               {[
                 { key: 'includeBooks', label: '书籍数据' },
-                { key: 'includeBorrowRecords', label: '借阅记录' },
+                { key: 'includeBorrow', label: '借阅记录' },
                 { key: 'includeWishlist', label: '愿望单' },
-                { key: 'includeShelfLocations', label: '书架位置' },
+                { key: 'includeShelf', label: '书架位置' },
               ].map((item) => (
                 <label
                   key={item.key}
@@ -416,13 +416,26 @@ const Stats: React.FC = () => {
                 >
                   <input
                     type="checkbox"
-                    checked={exportOptions[item.key as keyof typeof exportOptions] as boolean}
-                    onChange={(e) =>
-                      setExportOptions((prev) => ({
-                        ...prev,
-                        [item.key]: e.target.checked,
-                      }))
-                    }
+                    checked={!!(exportOptions as any)[item.key]}
+                    onChange={(e) => {
+                      const keyMap: Record<string, string> = {
+                        includeBooks: 'books',
+                        includeBorrow: 'borrow',
+                        includeWishlist: 'wishlist',
+                        includeShelf: 'shelf',
+                      };
+                      const typeKey = keyMap[item.key];
+                      setExportOptions((prev) => {
+                        const newIncludeTypes = e.target.checked
+                          ? [...prev.includeTypes, typeKey as any]
+                          : prev.includeTypes.filter((t) => t !== typeKey);
+                        return {
+                          ...prev,
+                          [item.key]: e.target.checked,
+                          includeTypes: newIncludeTypes as any,
+                        };
+                      });
+                    }}
                     className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm text-gray-700">{item.label}</span>

@@ -102,7 +102,7 @@ export function rowToBorrowRecord(row: any, book?: any): any {
     id: row.id,
     bookId: row.book_id,
     book,
-    borrowerName: row.borrower_name,
+    borrower: row.borrower_name,
     borrowerContact: row.borrower_contact,
     borrowDate: row.borrow_date,
     expectedReturnDate: row.expected_return_date,
@@ -122,10 +122,13 @@ export function rowToWishItem(row: any): any {
     author: row.author,
     publisher: row.publisher,
     isbn: row.isbn,
+    expectedPrice: row.estimated_price,
     estimatedPrice: row.estimated_price,
     priority: row.priority,
     notes: row.notes,
     coverImage: row.cover_image,
+    sourceUrl: row.source_url,
+    addedDate: row.created_at,
     purchased: !!row.purchased,
     actualPrice: row.actual_price,
     purchaseDate: row.purchase_date,
@@ -136,8 +139,11 @@ export function rowToWishItem(row: any): any {
 }
 
 export function rowToBudget(row: any): any {
+  if (!row) return null;
   return {
     id: row.id,
+    year: new Date().getFullYear(),
+    monthlyAmount: row.monthly_budget,
     monthlyBudget: row.monthly_budget,
     yearlyBudget: row.yearly_budget,
     createdAt: row.created_at,

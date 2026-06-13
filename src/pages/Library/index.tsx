@@ -77,8 +77,11 @@ const Library: React.FC = () => {
 
   const handleSubmitBook = async (data: SaveBookRequest) => {
     try {
-      await saveBook(data);
+      const savedBook = await saveBook(data);
       toast.success(editingBook ? '修改成功' : '添加成功');
+      if (editingBook && selectedBook?.id === editingBook.id) {
+        setSelectedBook(savedBook);
+      }
       setShowForm(false);
       setEditingBook(null);
     } catch (error) {

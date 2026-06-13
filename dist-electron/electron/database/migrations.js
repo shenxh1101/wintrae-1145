@@ -1,5 +1,5 @@
 export const migrations = [
-  `
+    `
 CREATE TABLE IF NOT EXISTS books (
   id TEXT PRIMARY KEY,
   isbn TEXT,
@@ -103,7 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_shelf_type ON shelf_locations(type);
 INSERT OR IGNORE INTO budgets (id, monthly_budget, yearly_budget, created_at, updated_at)
 VALUES ('default', 200, 2000, datetime('now'), datetime('now'));
   `,
-  `
+    `
 ALTER TABLE wishlist_items ADD COLUMN source_url TEXT;
   `,
 ];

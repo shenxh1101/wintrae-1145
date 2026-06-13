@@ -4,7 +4,7 @@
     "module": "ES2022",
     "moduleResolution": "node",
     "outDir": "dist-electron",
-    "rootDir": "electron",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -17,5 +17,5 @@
     }
   },
   "include": ["electron/**/*.ts", "shared/**/*.ts"],
-  "exclude": ["node_modules", "src"]
+  "exclude": ["node_modules", "src", "dist", "dist-electron"]
 }

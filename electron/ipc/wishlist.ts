@@ -48,15 +48,16 @@ export function registerWishlistIPC(): void {
         db.prepare(`
           INSERT INTO wishlist_items (
             id, title, author, publisher, isbn, estimated_price,
-            priority, notes, cover_image, purchased, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            source_url, priority, notes, cover_image, purchased, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         `).run(
           id,
           req.title,
           req.author || null,
           req.publisher || null,
           req.isbn || null,
-          req.estimatedPrice || null,
+          req.expectedPrice || req.estimatedPrice || null,
+          req.sourceUrl || null,
           req.priority,
           req.notes || null,
           req.coverImage || null,
@@ -67,7 +68,7 @@ export function registerWishlistIPC(): void {
         db.prepare(`
           UPDATE wishlist_items SET
             title = ?, author = ?, publisher = ?, isbn = ?,
-            estimated_price = ?, priority = ?, notes = ?,
+            estimated_price = ?, source_url = ?, priority = ?, notes = ?,
             cover_image = ?, updated_at = ?
           WHERE id = ?
         `).run(
@@ -75,7 +76,8 @@ export function registerWishlistIPC(): void {
           req.author || null,
           req.publisher || null,
           req.isbn || null,
-          req.estimatedPrice || null,
+          req.expectedPrice || req.estimatedPrice || null,
+          req.sourceUrl || null,
           req.priority,
           req.notes || null,
           req.coverImage || null,
@@ -106,11 +108,14 @@ export function registerWishlistIPC(): void {
       const db = getDatabase();
       const now = new Date().toISOString();
 
+      const monthlyBudget = req.monthlyAmount || req.monthlyBudget || 0;
+      const yearlyBudget = req.yearlyBudget || monthlyBudget * 12;
+
       db.prepare(`
         UPDATE budgets SET
           monthly_budget = ?, yearly_budget = ?, updated_at = ?
         WHERE id = ?
-      `).run(req.monthlyBudget, req.yearlyBudget, now, 'default');
+      `).run(monthlyBudget, yearlyBudget, now, 'default');
 
       const row = db.prepare('SELECT * FROM budgets WHERE id = ?').get('default') as any;
       return { success: true, data: rowToBudget(row) };
