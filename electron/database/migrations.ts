@@ -106,4 +106,8 @@ VALUES ('default', 200, 2000, datetime('now'), datetime('now'));
   `
 ALTER TABLE wishlist_items ADD COLUMN source_url TEXT;
   `,
+  `
+ALTER TABLE budgets ADD COLUMN year INTEGER;
+ALTER TABLE budgets ADD COLUMN monthly_amount REAL;
+  `,
 ];

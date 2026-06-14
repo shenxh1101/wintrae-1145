@@ -69,13 +69,17 @@ export function registerWishlistIPC() {
         try {
             const db = getDatabase();
             const now = new Date().toISOString();
-            const monthlyBudget = req.monthlyAmount || req.monthlyBudget || 0;
+            const monthlyAmount = req.monthlyAmount !== undefined && req.monthlyAmount !== null && req.monthlyAmount !== 0
+                ? req.monthlyAmount
+                : (req.monthlyBudget || 0);
+            const monthlyBudget = req.monthlyBudget || monthlyAmount;
             const yearlyBudget = req.yearlyBudget || monthlyBudget * 12;
+            const year = req.year || new Date().getFullYear();
             db.prepare(`
         UPDATE budgets SET
-          monthly_budget = ?, yearly_budget = ?, updated_at = ?
+          year = ?, monthly_amount = ?, monthly_budget = ?, yearly_budget = ?, updated_at = ?
         WHERE id = ?
-      `).run(monthlyBudget, yearlyBudget, now, 'default');
+      `).run(year, monthlyAmount, monthlyBudget, yearlyBudget, now, 'default');
             const row = db.prepare('SELECT * FROM budgets WHERE id = ?').get('default');
             return { success: true, data: rowToBudget(row) };
         }

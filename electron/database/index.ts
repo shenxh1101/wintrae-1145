@@ -140,12 +140,16 @@ export function rowToWishItem(row: any): any {
 
 export function rowToBudget(row: any): any {
   if (!row) return null;
+  const monthlyAmount = row.monthly_amount !== null && row.monthly_amount !== undefined
+    ? row.monthly_amount
+    : row.monthly_budget;
+  const year = row.year || new Date().getFullYear();
   return {
     id: row.id,
-    year: new Date().getFullYear(),
-    monthlyAmount: row.monthly_budget,
-    monthlyBudget: row.monthly_budget,
-    yearlyBudget: row.yearly_budget,
+    year: year,
+    monthlyAmount: monthlyAmount,
+    monthlyBudget: row.monthly_budget ?? monthlyAmount,
+    yearlyBudget: row.yearly_budget ?? monthlyAmount * 12,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
