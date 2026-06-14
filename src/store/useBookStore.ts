@@ -43,9 +43,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const ipc = useIPC();
       const currentFilters = { ...get().filters, ...filters };
       const result = await ipc.books.get(currentFilters);
-      set({ books: result.books, total: result.total, filters: currentFilters });
+      const safeBooks = Array.isArray(result?.books) ? result.books : [];
+      set({
+        books: safeBooks,
+        total: typeof result?.total === 'number' ? result.total : safeBooks.length,
+        filters: currentFilters,
+      });
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, books: [], total: 0 });
     } finally {
       set({ loading: false });
     }
@@ -55,9 +60,10 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const ipc = useIPC();
       const tags = await ipc.tags.getAll();
-      set({ tags });
+      set({ tags: Array.isArray(tags) ? tags : [] });
     } catch (error) {
       console.error('Failed to fetch tags:', error);
+      set({ tags: [] });
     }
   },
 

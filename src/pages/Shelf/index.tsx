@@ -153,11 +153,14 @@ const Shelf: React.FC = () => {
   };
 
   const renderLocationTree = (items: ShelfLocation[], level: number = 0) => {
-    return items.map((location) => {
-      const hasChildren = location.children && location.children.length > 0;
+    const safeItems = Array.isArray(items) ? items : [];
+    return safeItems.map((location) => {
+      if (!location || !location.id) return null;
+      const hasChildren = Array.isArray(location.children) && location.children.length > 0;
       const isExpanded = expandedIds.has(location.id);
       const isSelected = selectedLocation?.id === location.id;
-      const config = typeConfig[location.type];
+      const locType = (location.type || 'slot') as LocationType;
+      const config = typeConfig[locType] || typeConfig.slot;
 
       return (
         <div key={location.id}>
@@ -259,19 +262,24 @@ const Shelf: React.FC = () => {
     });
   };
 
-  const slotLocations = flatLocations.filter((l) => l.type === 'slot');
+  const slotLocations = Array.isArray(flatLocations)
+    ? flatLocations.filter((l) => l && l.type === 'slot')
+    : [];
 
   const getLocationPath = (locationId: string): string => {
     const path: string[] = [];
-    let current = flatLocations.find((l) => l.id === locationId);
+    const safeFlat = Array.isArray(flatLocations) ? flatLocations : [];
+    let current = safeFlat.find((l) => l && l.id === locationId);
     while (current) {
-      path.unshift(current.name);
-      current = flatLocations.find((l) => l.id === current?.parentId);
+      path.unshift(current.name || '');
+      current = safeFlat.find((l) => l && l.id === current?.parentId);
     }
     return path.join(' / ');
   };
 
-  const unassignedBooks = books.filter((b) => !b.shelfLocationId);
+  const unassignedBooks = Array.isArray(books)
+    ? books.filter((b) => b && !b.shelfLocationId)
+    : [];
 
   return (
     <div className="h-full flex flex-col">

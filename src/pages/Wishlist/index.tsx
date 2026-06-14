@@ -54,10 +54,10 @@ const Wishlist: React.FC = () => {
   }, []);
 
   const filteredItems = getFilteredItems();
-  const monthlySpent = getMonthlySpent();
-  const yearlySpent = getYearlySpent();
+  const monthlySpent = getMonthlySpent() || 0;
+  const yearlySpent = getYearlySpent() || 0;
 
-  const totalExpectedPrice = filteredItems.reduce((sum, item) => sum + (item.expectedPrice || 0), 0);
+  const totalExpectedPrice = filteredItems.reduce((sum, item) => sum + (item.expectedPrice || item.estimatedPrice || 0), 0);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -189,8 +189,12 @@ const Wishlist: React.FC = () => {
     setShowHistory(true);
   };
 
-  const budgetUsedPercent = budget ? Math.min((yearlySpent / (budget.monthlyAmount * 12)) * 100, 100) : 0;
-  const monthlyBudgetUsedPercent = budget ? Math.min((monthlySpent / budget.monthlyAmount) * 100, 100) : 0;
+  const budgetUsedPercent = budget && (budget.monthlyAmount || budget.monthlyBudget || 0) > 0
+    ? Math.min((yearlySpent / ((budget.monthlyAmount || budget.monthlyBudget || 0) * 12)) * 100, 100)
+    : 0;
+  const monthlyBudgetUsedPercent = budget && (budget.monthlyAmount || budget.monthlyBudget || 0) > 0
+    ? Math.min((monthlySpent / (budget.monthlyAmount || budget.monthlyBudget || 0)) * 100, 100)
+    : 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -372,11 +376,11 @@ const Wishlist: React.FC = () => {
                   </div>
                 )}
 
-                {item.expectedPrice !== undefined && (
+                {(item.expectedPrice !== undefined && item.expectedPrice !== null && !isNaN(Number(item.expectedPrice))) && (
                   <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="w-4 h-4 text-primary-500" />
                     <span className="text-lg font-bold text-primary-600">
-                      ¥{item.expectedPrice.toFixed(2)}
+                      ¥{Number(item.expectedPrice || item.estimatedPrice || 0).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -387,7 +391,7 @@ const Wishlist: React.FC = () => {
                   </p>
                 )}
 
-                {item.addedDate && (
+                {item.addedDate && !isNaN(new Date(item.addedDate).getTime()) && (
                   <p className="text-xs text-gray-400 mb-3">
                     添加于 {formatDate(item.addedDate)}
                   </p>

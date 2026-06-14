@@ -30,9 +30,9 @@ export const useStatsStore = create<StatsStore>((set) => ({
     try {
       const ipc = useIPC();
       const stats = await ipc.stats.get();
-      set({ stats });
+      set({ stats: stats ?? null });
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, stats: null });
     } finally {
       set({ loading: false });
     }

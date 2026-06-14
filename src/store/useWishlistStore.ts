@@ -38,9 +38,18 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
     try {
       const ipc = useIPC();
       const result = await ipc.wishlist.getAll();
-      set({ items: result.items, budget: result.budget });
+      const safeItems = result?.items ?? [];
+      const safeBudget = result?.budget ?? null;
+      set({ items: safeItems, budget: safeBudget });
+      try {
+        const ipc2 = useIPC();
+        const history = await ipc2.wishlist.getPurchasedHistory();
+        set({ purchasedHistory: history ?? [] });
+      } catch (err) {
+        set({ purchasedHistory: [] });
+      }
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, items: [], budget: null, purchasedHistory: [] });
     } finally {
       set({ loading: false });
     }

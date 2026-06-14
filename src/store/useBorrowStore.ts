@@ -31,10 +31,12 @@ export const useBorrowStore = create<BorrowStore>((set, get) => ({
     try {
       const ipc = useIPC();
       const result = await ipc.borrow.getAll({ status });
-      set({ records: result.records });
+      const safeRecords = result?.records ?? [];
+      set({ records: safeRecords });
       get().calculateStats();
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, records: [] });
+      set({ activeCount: 0, overdueCount: 0, soonDueCount: 0 });
     } finally {
       set({ loading: false });
     }
@@ -104,13 +106,14 @@ export const useBorrowStore = create<BorrowStore>((set, get) => ({
 
   calculateStats: () => {
     const { records } = get();
+    const safeRecords = records ?? [];
     const today = new Date().toISOString().split('T')[0];
     const threeDaysLater = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    const active = records.filter((r) => !r.actualReturnDate);
-    const overdue = active.filter((r) => r.expectedReturnDate < today);
+    const active = safeRecords.filter((r) => !r?.actualReturnDate);
+    const overdue = active.filter((r) => r?.expectedReturnDate && r.expectedReturnDate < today);
     const soonDue = active.filter(
-      (r) => r.expectedReturnDate >= today && r.expectedReturnDate <= threeDaysLater
+      (r) => r?.expectedReturnDate && r.expectedReturnDate >= today && r.expectedReturnDate <= threeDaysLater
     );
 
     set({

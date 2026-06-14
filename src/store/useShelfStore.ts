@@ -32,9 +32,9 @@ export const useShelfStore = create<ShelfStore>((set) => ({
     try {
       const ipc = useIPC();
       const locations = await ipc.shelf.getAll();
-      set({ locations });
+      set({ locations: Array.isArray(locations) ? locations : [] });
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, locations: [] });
     } finally {
       set({ loading: false });
     }
@@ -44,9 +44,10 @@ export const useShelfStore = create<ShelfStore>((set) => ({
     try {
       const ipc = useIPC();
       const locations = await ipc.shelf.getFlatList();
-      set({ flatLocations: locations });
+      set({ flatLocations: Array.isArray(locations) ? locations : [] });
     } catch (error) {
       console.error('Failed to fetch flat locations:', error);
+      set({ flatLocations: [] });
     }
   },
 
@@ -55,18 +56,19 @@ export const useShelfStore = create<ShelfStore>((set) => ({
     try {
       const ipc = useIPC();
       const location = await ipc.shelf.save(data);
-      await Promise.all([
-        (async () => {
-          const ipc2 = useIPC();
-          const locations = await ipc2.shelf.getAll();
-          set({ locations });
-        })(),
-        (async () => {
-          const ipc2 = useIPC();
-          const flatLocations = await ipc2.shelf.getFlatList();
-          set({ flatLocations });
-        })(),
-      ]);
+      try {
+        const ipc2 = useIPC();
+        const [locations, flatLocs] = await Promise.all([
+          ipc2.shelf.getAll(),
+          ipc2.shelf.getFlatList(),
+        ]);
+        set({
+          locations: Array.isArray(locations) ? locations : [],
+          flatLocations: Array.isArray(flatLocs) ? flatLocs : [],
+        });
+      } catch {
+        // ignore re-fetch errors, primary save succeeded
+      }
       return location;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -81,18 +83,19 @@ export const useShelfStore = create<ShelfStore>((set) => ({
     try {
       const ipc = useIPC();
       await ipc.shelf.delete(locationId);
-      await Promise.all([
-        (async () => {
-          const ipc2 = useIPC();
-          const locations = await ipc2.shelf.getAll();
-          set({ locations });
-        })(),
-        (async () => {
-          const ipc2 = useIPC();
-          const flatLocations = await ipc2.shelf.getFlatList();
-          set({ flatLocations });
-        })(),
-      ]);
+      try {
+        const ipc2 = useIPC();
+        const [locations, flatLocs] = await Promise.all([
+          ipc2.shelf.getAll(),
+          ipc2.shelf.getFlatList(),
+        ]);
+        set({
+          locations: Array.isArray(locations) ? locations : [],
+          flatLocations: Array.isArray(flatLocs) ? flatLocs : [],
+        });
+      } catch {
+        // ignore
+      }
     } catch (error) {
       set({ error: (error as Error).message });
       throw error;
@@ -119,9 +122,9 @@ export const useShelfStore = create<ShelfStore>((set) => ({
     try {
       const ipc = useIPC();
       const books = await ipc.shelf.getBooksByLocation(locationId);
-      set({ locationBooks: books });
+      set({ locationBooks: Array.isArray(books) ? books : [] });
     } catch (error) {
-      set({ error: (error as Error).message });
+      set({ error: (error as Error).message, locationBooks: [] });
     } finally {
       set({ loading: false });
     }

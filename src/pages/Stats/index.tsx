@@ -10,6 +10,9 @@ import {
 import { clsx } from 'clsx';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useBookStore } from '../../store/useBookStore';
+import { useBorrowStore } from '../../store/useBorrowStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
+import { useShelfStore } from '../../store/useShelfStore';
 import { useToast } from '../../store/useToastStore';
 import { Modal } from '../../components/Modal/Modal';
 import type { GetStatsResponse, ExportDataRequest } from '../../types';
@@ -19,6 +22,9 @@ const COLORS = ['#8B6914', '#2D5A27', '#4A90A4', '#D4A574', '#8B4513'];
 const Stats: React.FC = () => {
   const { stats, loading, fetchStats, exportData, saveExportFile, selectImportFile, importData } = useStatsStore();
   const { fetchBooks } = useBookStore();
+  const borrowStore = useBorrowStore();
+  const wishlistStore = useWishlistStore();
+  const shelfStore = useShelfStore();
   const toast = useToast();
 
   const [showExportModal, setShowExportModal] = useState(false);
@@ -77,15 +83,33 @@ const Stats: React.FC = () => {
     setImporting(true);
     try {
       const result = await importData({ filePath: importFilePath });
-      if (result.failedCount > 0) {
-        toast.success(`成功导入 ${result.importedCount} 条数据，${result.failedCount} 条失败（${result.details}）`);
+      const total = result.importedCount + result.failedCount;
+
+      if (result.importedCount === 0 && result.failedCount === 0) {
+        toast.warning('没有可导入的数据，文件可能为空或格式不正确');
+      } else if (result.failedCount === 0) {
+        toast.success(`全部导入成功！共 ${result.importedCount} 条（${result.details || '无详细信息'}）`);
+      } else if (result.importedCount > 0 && result.failedCount > 0) {
+        toast.warning(`部分导入成功：成功 ${result.importedCount} 条，失败 ${result.failedCount} 条（${result.details}）`);
       } else {
-        toast.success(`成功导入 ${result.importedCount} 条数据（${result.details}）`);
+        toast.error(`全部导入失败，共 ${result.failedCount} 条。请检查文件格式是否正确`);
       }
+
       setShowImportModal(false);
       setImportFilePath('');
-      await fetchStats();
-      await fetchBooks();
+
+      const refreshTasks: Promise<void>[] = [];
+      refreshTasks.push(fetchStats());
+      refreshTasks.push(fetchBooks());
+
+      if (result.importedCount > 0 || total > 0) {
+        refreshTasks.push(borrowStore.fetchRecords());
+        refreshTasks.push(wishlistStore.fetchAll());
+        refreshTasks.push(shelfStore.fetchLocations());
+        refreshTasks.push(shelfStore.fetchFlatLocations());
+      }
+
+      await Promise.all(refreshTasks.map(p => p.catch(() => void 0)));
     } catch (error) {
       toast.error('导入失败');
     } finally {
@@ -218,24 +242,27 @@ const Stats: React.FC = () => {
         </div>
       </div>
 
-      {duplicateCount > 0 && s?.duplicates && (
+      {duplicateCount > 0 && Array.isArray(s?.duplicates) && (
         <div className="card p-4 mb-6 border-l-4 border-l-red-400">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <h3 className="font-medium text-gray-800">重复书籍提醒</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {s.duplicates.map((dup, index) => (
-              <div key={index} className="bg-red-50 rounded-lg p-3">
-                <p className="font-medium text-gray-800">{dup[0].title}</p>
-                {dup[0].author && (
-                  <p className="text-sm text-gray-500">{dup[0].author}</p>
-                )}
-                <p className="text-xs text-red-600 mt-1">
-                  共有 {dup.length} 本重复
-                </p>
-              </div>
-            ))}
+            {s.duplicates.map((dup, index) => {
+              if (!Array.isArray(dup) || dup.length === 0) return null;
+              return (
+                <div key={index} className="bg-red-50 rounded-lg p-3">
+                  <p className="font-medium text-gray-800">{dup[0]?.title || '未知书籍'}</p>
+                  {dup[0]?.author && (
+                    <p className="text-sm text-gray-500">{dup[0].author}</p>
+                  )}
+                  <p className="text-xs text-red-600 mt-1">
+                    共有 {dup.length} 本重复
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -313,19 +340,22 @@ const Stats: React.FC = () => {
           </div>
         )}
 
-        {s?.recentAdditions && s.recentAdditions.length > 0 && (
+        {Array.isArray(s?.recentAdditions) && s.recentAdditions.length > 0 && (
           <div className="card p-6">
             <h3 className="font-serif font-semibold text-gray-800 mb-4">最近添加</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {s.recentAdditions.map((book) => (
-                <div key={book.id} className="bg-gray-50 rounded-lg p-3">
-                  <p className="font-medium text-gray-800 truncate">{book.title}</p>
-                  <p className="text-sm text-gray-500 truncate">{book.author}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {book.purchaseDate || book.createdAt.split('T')[0]}
-                  </p>
-                </div>
-              ))}
+              {s.recentAdditions.map((book) => {
+                if (!book || !book.id) return null;
+                return (
+                  <div key={book.id} className="bg-gray-50 rounded-lg p-3">
+                    <p className="font-medium text-gray-800 truncate">{book.title || '未知书名'}</p>
+                    <p className="text-sm text-gray-500 truncate">{book.author || '未知作者'}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {book.purchaseDate || (book.createdAt ? (book.createdAt as string).split('T')[0] : '未知日期')}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

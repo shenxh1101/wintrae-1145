@@ -56,10 +56,13 @@ const Borrow: React.FC = () => {
     if (!searchQuery) return true;
     const book = getBookById(record.bookId);
     const query = searchQuery.toLowerCase();
+    const borrower = (record.borrower || '').toString().toLowerCase();
+    const title = (book?.title || '').toString().toLowerCase();
+    const author = (book?.author || '').toString().toLowerCase();
     return (
-      record.borrower.toLowerCase().includes(query) ||
-      book?.title.toLowerCase().includes(query) ||
-      book?.author.toLowerCase().includes(query)
+      borrower.includes(query) ||
+      title.includes(query) ||
+      author.includes(query)
     );
   });
 
