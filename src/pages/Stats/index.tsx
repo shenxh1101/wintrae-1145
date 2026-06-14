@@ -76,8 +76,12 @@ const Stats: React.FC = () => {
 
     setImporting(true);
     try {
-      const count = await importData({ filePath: importFilePath });
-      toast.success(`成功导入 ${count} 条数据`);
+      const result = await importData({ filePath: importFilePath });
+      if (result.failedCount > 0) {
+        toast.success(`成功导入 ${result.importedCount} 条数据，${result.failedCount} 条失败（${result.details}）`);
+      } else {
+        toast.success(`成功导入 ${result.importedCount} 条数据（${result.details}）`);
+      }
       setShowImportModal(false);
       setImportFilePath('');
       await fetchStats();

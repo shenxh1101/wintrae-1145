@@ -149,6 +149,15 @@ export function registerStatsIPC() {
                 const wishRows = db.prepare('SELECT * FROM wishlist_items').all();
                 result.wishlistItems = wishRows.map(rowToWishItem);
             }
+            const csvEscape = (val) => {
+                if (val === null || val === undefined)
+                    return '';
+                const str = String(val);
+                if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            };
             let data;
             if (req.format === 'json') {
                 data = JSON.stringify(result, null, 2);
@@ -157,22 +166,23 @@ export function registerStatsIPC() {
                 const lines = [];
                 if (result.books) {
                     lines.push('=== 书籍数据 ===');
-                    lines.push('ID,ISBN,书名,作者,出版社,出版日期,购买价格,购买日期,阅读状态,评分,标签,位置ID,创建时间');
+                    lines.push('ID,ISBN,书名,作者,出版社,出版日期,购买价格,购买日期,阅读状态,评分,标签,备注,位置ID,创建时间');
                     for (const book of result.books) {
                         lines.push([
-                            book.id,
-                            book.isbn || '',
-                            `"${book.title.replace(/"/g, '""')}"`,
-                            `"${book.author.replace(/"/g, '""')}"`,
-                            book.publisher ? `"${book.publisher.replace(/"/g, '""')}"` : '',
-                            book.publishDate || '',
-                            book.purchasePrice || '',
-                            book.purchaseDate || '',
-                            book.status,
-                            book.rating || '',
-                            `"${book.tags.join(';')}"`,
-                            book.shelfLocationId || '',
-                            book.createdAt,
+                            csvEscape(book.id),
+                            csvEscape(book.isbn),
+                            csvEscape(book.title),
+                            csvEscape(book.author),
+                            csvEscape(book.publisher),
+                            csvEscape(book.publishDate),
+                            csvEscape(book.purchasePrice),
+                            csvEscape(book.purchaseDate),
+                            csvEscape(book.status),
+                            csvEscape(book.rating),
+                            csvEscape(book.tags ? book.tags.join(';') : ''),
+                            csvEscape(book.notes),
+                            csvEscape(book.shelfLocationId),
+                            csvEscape(book.createdAt),
                         ].join(','));
                     }
                 }
@@ -183,17 +193,17 @@ export function registerStatsIPC() {
                     lines.push('ID,书籍ID,借出人,联系方式,借出日期,应还日期,实际归还日期,是否提醒,是否已提醒,备注,创建时间');
                     for (const record of result.borrowRecords) {
                         lines.push([
-                            record.id,
-                            record.bookId,
-                            `"${(record.borrower || record.borrowerName || '').replace(/"/g, '""')}"`,
-                            record.borrowerContact ? `"${record.borrowerContact.replace(/"/g, '""')}"` : '',
-                            record.borrowDate || '',
-                            record.expectedReturnDate || '',
-                            record.actualReturnDate || '',
-                            record.enableReminder ? 1 : 0,
-                            record.reminderSent ? 1 : 0,
-                            record.notes ? `"${record.notes.replace(/"/g, '""')}"` : '',
-                            record.createdAt || '',
+                            csvEscape(record.id),
+                            csvEscape(record.bookId),
+                            csvEscape(record.borrower || record.borrowerName),
+                            csvEscape(record.borrowerContact),
+                            csvEscape(record.borrowDate),
+                            csvEscape(record.expectedReturnDate),
+                            csvEscape(record.actualReturnDate),
+                            csvEscape(record.enableReminder ? 1 : 0),
+                            csvEscape(record.reminderSent ? 1 : 0),
+                            csvEscape(record.notes),
+                            csvEscape(record.createdAt),
                         ].join(','));
                     }
                 }
@@ -204,20 +214,20 @@ export function registerStatsIPC() {
                     lines.push('ID,书名,作者,出版社,ISBN,预计价格,来源链接,优先级,备注,是否已购,实际价格,购买日期,关联书籍ID,创建时间');
                     for (const item of result.wishlistItems) {
                         lines.push([
-                            item.id,
-                            `"${item.title.replace(/"/g, '""')}"`,
-                            item.author ? `"${item.author.replace(/"/g, '""')}"` : '',
-                            item.publisher ? `"${item.publisher.replace(/"/g, '""')}"` : '',
-                            item.isbn || '',
-                            item.expectedPrice || item.estimatedPrice || '',
-                            item.sourceUrl ? `"${item.sourceUrl.replace(/"/g, '""')}"` : '',
-                            item.priority,
-                            item.notes ? `"${item.notes.replace(/"/g, '""')}"` : '',
-                            item.purchased ? 1 : 0,
-                            item.actualPrice || '',
-                            item.purchaseDate || '',
-                            item.bookId || '',
-                            item.createdAt || '',
+                            csvEscape(item.id),
+                            csvEscape(item.title),
+                            csvEscape(item.author),
+                            csvEscape(item.publisher),
+                            csvEscape(item.isbn),
+                            csvEscape(item.expectedPrice || item.estimatedPrice),
+                            csvEscape(item.sourceUrl),
+                            csvEscape(item.priority),
+                            csvEscape(item.notes),
+                            csvEscape(item.purchased ? 1 : 0),
+                            csvEscape(item.actualPrice),
+                            csvEscape(item.purchaseDate),
+                            csvEscape(item.bookId),
+                            csvEscape(item.createdAt),
                         ].join(','));
                     }
                 }
@@ -228,14 +238,14 @@ export function registerStatsIPC() {
                     lines.push('ID,父级ID,类型,名称,编码,描述,排序,创建时间');
                     for (const location of result.shelfLocations) {
                         lines.push([
-                            location.id,
-                            location.parentId || '',
-                            location.type,
-                            `"${location.name.replace(/"/g, '""')}"`,
-                            location.code ? `"${location.code.replace(/"/g, '""')}"` : '',
-                            location.description ? `"${location.description.replace(/"/g, '""')}"` : '',
-                            location.positionOrder || 0,
-                            location.createdAt || '',
+                            csvEscape(location.id),
+                            csvEscape(location.parentId),
+                            csvEscape(location.type),
+                            csvEscape(location.name),
+                            csvEscape(location.code),
+                            csvEscape(location.description),
+                            csvEscape(location.positionOrder || 0),
+                            csvEscape(location.createdAt),
                         ].join(','));
                     }
                 }
@@ -262,7 +272,7 @@ export function registerStatsIPC() {
                 return { success: false, error: '用户取消' };
             }
             fs.writeFileSync(result.filePath, data, 'utf-8');
-            return { success: true, filePath: result.filePath };
+            return { success: true, data: result.filePath };
         }
         catch (error) {
             return { success: false, error: error.message };
@@ -281,7 +291,7 @@ export function registerStatsIPC() {
             if (result.canceled || result.filePaths.length === 0) {
                 return { success: false, error: '用户取消' };
             }
-            return { success: true, filePath: result.filePaths[0] };
+            return { success: true, data: result.filePaths[0] };
         }
         catch (error) {
             return { success: false, error: error.message };
@@ -291,6 +301,8 @@ export function registerStatsIPC() {
         try {
             const db = getDatabase();
             let importedCount = 0;
+            let failedCount = 0;
+            const details = [];
             let format = req.format;
             let data = req.data;
             const overwrite = req.overwrite || false;
@@ -299,6 +311,40 @@ export function registerStatsIPC() {
                 format = ext === '.csv' ? 'csv' : 'json';
                 data = fs.readFileSync(req.filePath, 'utf-8');
             }
+            const splitCSVRecords = (csv) => {
+                const records = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < csv.length; i++) {
+                    const char = csv[i];
+                    if (char === '"') {
+                        if (inQuotes && csv[i + 1] === '"') {
+                            current += '""';
+                            i++;
+                        }
+                        else {
+                            inQuotes = !inQuotes;
+                            current += char;
+                        }
+                    }
+                    else if ((char === '\n' || char === '\r') && !inQuotes) {
+                        if (char === '\r' && csv[i + 1] === '\n') {
+                            i++;
+                        }
+                        if (current.trim()) {
+                            records.push(current);
+                        }
+                        current = '';
+                    }
+                    else {
+                        current += char;
+                    }
+                }
+                if (current.trim()) {
+                    records.push(current);
+                }
+                return records;
+            };
             const parseCSVLine = (line) => {
                 const result = [];
                 let current = '';
@@ -332,18 +378,18 @@ export function registerStatsIPC() {
                     wishlistItems: [],
                     shelfLocations: [],
                 };
-                const lines = csv.split(/\r?\n/).filter((l) => l.trim());
+                const records = splitCSVRecords(csv);
                 let currentSection = null;
                 let headers = null;
-                for (const line of lines) {
-                    if (line.startsWith('=== ')) {
-                        if (line.includes('书籍数据'))
+                for (const record of records) {
+                    if (record.startsWith('=== ')) {
+                        if (record.includes('书籍数据'))
                             currentSection = 'books';
-                        else if (line.includes('借阅记录'))
+                        else if (record.includes('借阅记录'))
                             currentSection = 'borrowRecords';
-                        else if (line.includes('愿望单'))
+                        else if (record.includes('愿望单'))
                             currentSection = 'wishlistItems';
-                        else if (line.includes('书架位置'))
+                        else if (record.includes('书架位置'))
                             currentSection = 'shelfLocations';
                         else
                             currentSection = null;
@@ -353,10 +399,10 @@ export function registerStatsIPC() {
                     if (!currentSection)
                         continue;
                     if (!headers) {
-                        headers = parseCSVLine(line);
+                        headers = parseCSVLine(record);
                         continue;
                     }
-                    const values = parseCSVLine(line);
+                    const values = parseCSVLine(record);
                     const obj = {};
                     headers.forEach((h, idx) => {
                         obj[h] = values[idx] ?? '';
@@ -374,6 +420,7 @@ export function registerStatsIPC() {
                             status: obj['阅读状态'] || 'unread',
                             rating: obj['评分'] ? parseInt(obj['评分']) : null,
                             tags: obj['标签'] ? obj['标签'].split(';').filter(Boolean) : [],
+                            notes: obj['备注'] || null,
                             shelfLocationId: obj['位置ID'] || null,
                             createdAt: obj['创建时间'],
                         });
@@ -445,70 +492,138 @@ export function registerStatsIPC() {
                 if (!parsedData)
                     return;
                 if (parsedData.books && Array.isArray(parsedData.books)) {
+                    let bookOk = 0;
+                    let bookFail = 0;
                     for (const book of parsedData.books) {
-                        const now = new Date().toISOString();
-                        db.prepare(`
-              INSERT OR REPLACE INTO books (
-                id, isbn, title, author, publisher, publish_date,
-                purchase_price, purchase_date, status, rating, notes,
-                cover_image, shelf_location_id, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(book.id, book.isbn || null, book.title, book.author, book.publisher || null, book.publishDate || null, book.purchasePrice || null, book.purchaseDate || null, book.status || 'unread', book.rating || null, book.notes || null, book.coverImage || null, book.shelfLocationId || null, book.createdAt || now, now);
-                        if (book.tags && Array.isArray(book.tags)) {
-                            for (const tagName of book.tags) {
-                                let tagRow = db.prepare('SELECT * FROM tags WHERE name = ?').get(tagName);
-                                if (!tagRow) {
-                                    const tagId = uuidv4();
-                                    db.prepare('INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)').run(tagId, tagName, '#8B6914', now);
-                                    tagRow = { id: tagId };
-                                }
-                                db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)').run(book.id, tagRow.id);
+                        try {
+                            if (!book.id || !book.title) {
+                                bookFail++;
+                                continue;
                             }
+                            const now = new Date().toISOString();
+                            db.prepare(`
+                INSERT OR REPLACE INTO books (
+                  id, isbn, title, author, publisher, publish_date,
+                  purchase_price, purchase_date, status, rating, notes,
+                  cover_image, shelf_location_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(book.id, book.isbn || null, book.title, book.author, book.publisher || null, book.publishDate || null, book.purchasePrice || null, book.purchaseDate || null, book.status || 'unread', book.rating || null, book.notes || null, book.coverImage || null, book.shelfLocationId || null, book.createdAt || now, now);
+                            if (book.tags && Array.isArray(book.tags)) {
+                                for (const tagName of book.tags) {
+                                    let tagRow = db.prepare('SELECT * FROM tags WHERE name = ?').get(tagName);
+                                    if (!tagRow) {
+                                        const tagId = uuidv4();
+                                        db.prepare('INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)').run(tagId, tagName, '#8B6914', now);
+                                        tagRow = { id: tagId };
+                                    }
+                                    db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)').run(book.id, tagRow.id);
+                                }
+                            }
+                            bookOk++;
                         }
-                        importedCount++;
+                        catch {
+                            bookFail++;
+                        }
                     }
+                    importedCount += bookOk;
+                    failedCount += bookFail;
+                    if (bookOk > 0)
+                        details.push(`书籍 ${bookOk} 条`);
+                    if (bookFail > 0)
+                        details.push(`书籍 ${bookFail} 条失败`);
                 }
                 if (parsedData.borrowRecords && Array.isArray(parsedData.borrowRecords)) {
+                    let borrowOk = 0;
+                    let borrowFail = 0;
                     for (const record of parsedData.borrowRecords) {
-                        const now = new Date().toISOString();
-                        db.prepare(`
-              INSERT OR REPLACE INTO borrow_records (
-                id, book_id, borrower_name, borrower_contact, borrow_date,
-                expected_return_date, actual_return_date, enable_reminder,
-                reminder_sent, notes, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(record.id, record.bookId, record.borrower || record.borrowerName, record.borrowerContact || null, record.borrowDate, record.expectedReturnDate, record.actualReturnDate || null, record.enableReminder ? 1 : 0, record.reminderSent ? 1 : 0, record.notes || null, record.createdAt || now, now);
-                        importedCount++;
+                        try {
+                            if (!record.id || !record.bookId) {
+                                borrowFail++;
+                                continue;
+                            }
+                            const now = new Date().toISOString();
+                            db.prepare(`
+                INSERT OR REPLACE INTO borrow_records (
+                  id, book_id, borrower_name, borrower_contact, borrow_date,
+                  expected_return_date, actual_return_date, enable_reminder,
+                  reminder_sent, notes, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(record.id, record.bookId, record.borrower || record.borrowerName, record.borrowerContact || null, record.borrowDate, record.expectedReturnDate, record.actualReturnDate || null, record.enableReminder ? 1 : 0, record.reminderSent ? 1 : 0, record.notes || null, record.createdAt || now, now);
+                            borrowOk++;
+                        }
+                        catch {
+                            borrowFail++;
+                        }
                     }
+                    importedCount += borrowOk;
+                    failedCount += borrowFail;
+                    if (borrowOk > 0)
+                        details.push(`借阅 ${borrowOk} 条`);
+                    if (borrowFail > 0)
+                        details.push(`借阅 ${borrowFail} 条失败`);
                 }
                 if (parsedData.wishlistItems && Array.isArray(parsedData.wishlistItems)) {
+                    let wishOk = 0;
+                    let wishFail = 0;
                     for (const item of parsedData.wishlistItems) {
-                        const now = new Date().toISOString();
-                        db.prepare(`
-              INSERT OR REPLACE INTO wishlist_items (
-                id, title, author, publisher, isbn, estimated_price,
-                source_url, priority, notes, cover_image, purchased,
-                actual_price, purchase_date, book_id, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(item.id, item.title, item.author || null, item.publisher || null, item.isbn || null, item.expectedPrice || item.estimatedPrice || null, item.sourceUrl || null, item.priority, item.notes || null, item.coverImage || null, item.purchased ? 1 : 0, item.actualPrice || null, item.purchaseDate || null, item.bookId || null, item.createdAt || now, now);
-                        importedCount++;
+                        try {
+                            if (!item.id || !item.title) {
+                                wishFail++;
+                                continue;
+                            }
+                            const now = new Date().toISOString();
+                            db.prepare(`
+                INSERT OR REPLACE INTO wishlist_items (
+                  id, title, author, publisher, isbn, estimated_price,
+                  source_url, priority, notes, cover_image, purchased,
+                  actual_price, purchase_date, book_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(item.id, item.title, item.author || null, item.publisher || null, item.isbn || null, item.expectedPrice || item.estimatedPrice || null, item.sourceUrl || null, item.priority, item.notes || null, item.coverImage || null, item.purchased ? 1 : 0, item.actualPrice || null, item.purchaseDate || null, item.bookId || null, item.createdAt || now, now);
+                            wishOk++;
+                        }
+                        catch {
+                            wishFail++;
+                        }
                     }
+                    importedCount += wishOk;
+                    failedCount += wishFail;
+                    if (wishOk > 0)
+                        details.push(`愿望单 ${wishOk} 条`);
+                    if (wishFail > 0)
+                        details.push(`愿望单 ${wishFail} 条失败`);
                 }
                 if (parsedData.shelfLocations && Array.isArray(parsedData.shelfLocations)) {
+                    let shelfOk = 0;
+                    let shelfFail = 0;
                     for (const location of parsedData.shelfLocations) {
-                        const now = new Date().toISOString();
-                        db.prepare(`
-              INSERT OR REPLACE INTO shelf_locations (
-                id, parent_id, type, name, code, description,
-                position_order, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(location.id, location.parentId || null, location.type, location.name, location.code || null, location.description || null, location.positionOrder || 0, location.createdAt || now, now);
-                        importedCount++;
+                        try {
+                            if (!location.id || !location.name) {
+                                shelfFail++;
+                                continue;
+                            }
+                            const now = new Date().toISOString();
+                            db.prepare(`
+                INSERT OR REPLACE INTO shelf_locations (
+                  id, parent_id, type, name, code, description,
+                  position_order, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(location.id, location.parentId || null, location.type, location.name, location.code || null, location.description || null, location.positionOrder || 0, location.createdAt || now, now);
+                            shelfOk++;
+                        }
+                        catch {
+                            shelfFail++;
+                        }
                     }
+                    importedCount += shelfOk;
+                    failedCount += shelfFail;
+                    if (shelfOk > 0)
+                        details.push(`书架 ${shelfOk} 条`);
+                    if (shelfFail > 0)
+                        details.push(`书架 ${shelfFail} 条失败`);
                 }
             });
             transaction();
-            return { success: true, importedCount };
+            return { success: true, data: { importedCount, failedCount, details: details.join('，') } };
         }
         catch (error) {
             return { success: false, error: error.message };
@@ -522,7 +637,7 @@ export function registerStatsIPC() {
             const fileName = `${bookId}${ext}`;
             const savedPath = path.join(coversPath, fileName);
             fs.copyFileSync(filePath, savedPath);
-            return { success: true, savedPath: `file://${savedPath.replace(/\\/g, '/')}` };
+            return { success: true, data: `file://${savedPath.replace(/\\/g, '/')}` };
         }
         catch (error) {
             return { success: false, error: error.message };
@@ -540,7 +655,7 @@ export function registerStatsIPC() {
             if (result.canceled || result.filePaths.length === 0) {
                 return { success: false, error: '用户取消' };
             }
-            return { success: true, filePath: result.filePaths[0] };
+            return { success: true, data: result.filePaths[0] };
         }
         catch (error) {
             return { success: false, error: error.message };

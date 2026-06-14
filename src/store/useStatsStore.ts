@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import type { GetStatsResponse, ExportDataRequest, ImportDataRequest } from '../types';
 import { useIPC } from '../hooks/useIPC';
 
+interface ImportResult {
+  importedCount: number;
+  failedCount: number;
+  details: string;
+}
+
 interface StatsStore {
   stats: GetStatsResponse | null;
   loading: boolean;
@@ -11,7 +17,7 @@ interface StatsStore {
   exportData: (req: ExportDataRequest) => Promise<string>;
   saveExportFile: (data: string, defaultName: string) => Promise<string>;
   selectImportFile: () => Promise<string>;
-  importData: (req: ImportDataRequest) => Promise<number>;
+  importData: (req: ImportDataRequest) => Promise<ImportResult>;
 }
 
 export const useStatsStore = create<StatsStore>((set) => ({
@@ -66,12 +72,12 @@ export const useStatsStore = create<StatsStore>((set) => ({
     }
   },
 
-  importData: async (req) => {
+  importData: async (req): Promise<ImportResult> => {
     set({ loading: true, error: null });
     try {
       const ipc = useIPC();
-      const count = await ipc.stats.import(req);
-      return count;
+      const result = await ipc.stats.import(req) as unknown as ImportResult;
+      return result;
     } catch (error) {
       set({ error: (error as Error).message });
       throw error;

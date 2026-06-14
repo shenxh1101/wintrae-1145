@@ -33,7 +33,24 @@ export function initDatabase(): Database.Database {
   db.pragma('foreign_keys = ON');
 
   for (const migration of migrations) {
-    db.exec(migration);
+    try {
+      db.exec(migration);
+    } catch (err: any) {
+      if (err.message && err.message.includes('duplicate column name')) {
+        // already applied, safe to skip
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  const budgetRow = db.prepare('SELECT * FROM budgets WHERE id = ?').get('default') as any;
+  if (budgetRow && (budgetRow.year === null || budgetRow.year === undefined)) {
+    db.prepare('UPDATE budgets SET year = ?, monthly_amount = ? WHERE id = ?').run(
+      new Date().getFullYear(),
+      budgetRow.monthly_budget,
+      'default'
+    );
   }
 
   return db;
